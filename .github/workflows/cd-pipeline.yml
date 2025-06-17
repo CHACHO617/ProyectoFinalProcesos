@@ -3,65 +3,80 @@ name: DevSecOps Pipeline
 on:
   push:
     branches:
+      - test
       - main
+
+env:
+  TWILIO_FROM: "whatsapp:+14155238886"
+  TWILIO_TO: "whatsapp:+593TU_NUMERO_AQUI"
+  ARGOCD_SERVER: "localhost:8080"
+  ARGOCD_USERNAME: "admin"
+  ARGOCD_PASSWORD: "admin"
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Clonar el repositorio
+      - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Construir imagen service1
+      - name: Build service1
         run: docker build -t service1 ./service1
 
-      - name: Construir imagen service2
+      - name: Build service2
         run: docker build -t service2 ./service2
 
-      - name: Construir imagen service3
+      - name: Build service3
         run: docker build -t service3 ./service3
 
   test:
     runs-on: ubuntu-latest
     needs: build
     steps:
-      - name: Clonar el repositorio
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: Configurar Python
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v4
         with:
           python-version: "3.12"
 
-      - name: Instalar dependencias
+      - name: Install dependencies
         run: |
           pip install -r service1/requirements.txt
           pip install -r service2/requirements.txt
           pip install -r service3/requirements.txt
           pip install pytest
 
-      - name: Ejecutar pruebas en service1
+      - name: Run tests service1
         run: pytest service1/
 
-      - name: Ejecutar pruebas en service2
+      - name: Run tests service2
         run: pytest service2/
 
-      - name: Ejecutar pruebas en service3
+      - name: Run tests service3
         run: pytest service3/
 
   security:
     runs-on: ubuntu-latest
     needs: test
     steps:
-      - name: Clonar el repositorio
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: Escaneo de vulnerabilidades con Trivy
+      - name: Trivy Scan - service1
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: "service1"
 
-      - name: Análisis de código con SonarQube
+      - name: Trivy Scan - service2
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "service2"
+
+      - name: Trivy Scan - service3
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: "service3"
+
+      - name: SonarQube Scan
         uses: SonarSource/sonarcloud-github-action@master
         with:
           args: >
@@ -73,33 +88,48 @@ jobs:
     runs-on: ubuntu-latest
     needs: security
     steps:
-      - name: Clonar el repositorio
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: Instalar kubectl y ArgoCD CLI
+      - name: Install ArgoCD CLI
         run: |
-          sudo apt-get update && sudo apt-get install -y curl
           curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
           chmod +x /usr/local/bin/argocd
 
-      - name: Validar YAMLs antes del despliegue
+      - name: Install kubeval
         run: |
-          pip install kubeval
-          kubeval manifests/*.yaml || echo "Validación completada con advertencias."
+          pip install kubeval || sudo apt-get install kubeval
 
-      - name: Login a ArgoCD
+      - name: Validate YAML manifests
+        run: kubeval manifests/*.yaml || echo "Advertencias detectadas en YAMLs"
+
+      - name: Login to ArgoCD
         run: |
-          argocd login localhost:8080 --username admin --password admin --insecure
+          argocd login $ARGOCD_SERVER --username $ARGOCD_USERNAME --password $ARGOCD_PASSWORD --insecure
 
-      - name: Sincronizar aplicación con ArgoCD
+      - name: Validar políticas de despliegue
         run: |
-          argocd app sync microservices-app
-          argocd app wait microservices-app --timeout 300
+          argocd app get microservices-app
+          estado=$(argocd app get microservices-app -o json | jq -r '.status.health.status')
+          sync=$(argocd app get microservices-app -o json | jq -r '.status.sync.status')
+          if [[ "$estado" != "Healthy" ]] && [[ "$sync" != "Synced" ]]; then
+            echo "Error: La aplicación no está saludable o sincronizada"
+            exit 1
+          fi
 
-      - name: Enviar notificación con Twilio (CD Finalizado)
+      - name: Sincronizar con ArgoCD
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/test" ]]; then
+            argocd app sync microservices-test
+            argocd app wait microservices-test --timeout 300
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            argocd app sync microservices-prod
+            argocd app wait microservices-prod --timeout 300
+          fi
+
+      - name: Enviar notificación por WhatsApp
         run: |
           curl -X POST https://api.twilio.com/2010-04-01/Accounts/${{ secrets.TWILIO_SID }}/Messages.json \
-          --data-urlencode "Body=✅ Pipeline completado y aplicación desplegada correctamente." \
-          --data-urlencode "From=whatsapp:+14155238886" \
-          --data-urlencode "To=whatsapp:+593TU_NUMERO_AQUI" \
-          -u ${{ secrets.TWILIO_SID }}:${{ secrets.TWILIO_AUTH_TOKEN }}
+            --data-urlencode "Body=✅ Despliegue exitoso en entorno ${{ github.ref_name }}" \
+            --data-urlencode "From=${{ env.TWILIO_FROM }}" \
+            --data-urlencode "To=${{ env.TWILIO_TO }}" \
+            -u ${{ secrets.TWILIO_SID }}:${{ secrets.TWILIO_AUTH_TOKEN }}

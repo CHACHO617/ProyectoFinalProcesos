@@ -1,6 +1,10 @@
 FROM python:3.9-slim
+
 WORKDIR /app
 COPY . .
-RUN pip install flask requests
-EXPOSE 5000
-CMD ["python", "app.py"]
+
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
+
+EXPOSE 8082
+CMD ["python", "main.py"]
