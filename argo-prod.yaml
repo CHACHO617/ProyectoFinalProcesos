@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prod-env
+  namespace: argocd
+spec:
+  destination:
+    namespace: prod
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    repoURL: https://github.com/CHACHO617/DeberProcesosMinikube
+    targetRevision: HEAD
+    path: k8s/prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
