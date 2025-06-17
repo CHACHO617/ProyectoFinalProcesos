@@ -8,7 +8,7 @@ on:
 
 env:
   TWILIO_FROM: "whatsapp:+14155238886"
-  TWILIO_TO: "whatsapp:+593TU_NUMERO_AQUI"
+  TWILIO_TO: "whatsapp:+593997357707"
   ARGOCD_SERVER: "localhost:8080"
   ARGOCD_USERNAME: "admin"
   ARGOCD_PASSWORD: "admin"
@@ -80,8 +80,8 @@ jobs:
         uses: SonarSource/sonarcloud-github-action@master
         with:
           args: >
-            -Dsonar.projectKey=your_project_key
-            -Dsonar.organization=your_org
+            -Dsonar.projectKey=CHACHO617_ProyectoFinalProcesos
+            -Dsonar.organization=chacho617
             -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
   deploy:
@@ -97,7 +97,7 @@ jobs:
 
       - name: Install kubeval
         run: |
-          pip install kubeval || sudo apt-get install kubeval
+          pip install kubeval || sudo apt-get install -y kubeval
 
       - name: Validate YAML manifests
         run: kubeval manifests/*.yaml || echo "Advertencias detectadas en YAMLs"
@@ -108,20 +108,27 @@ jobs:
 
       - name: Validar políticas de despliegue
         run: |
-          argocd app get microservices-app
-          estado=$(argocd app get microservices-app -o json | jq -r '.status.health.status')
-          sync=$(argocd app get microservices-app -o json | jq -r '.status.sync.status')
-          if [[ "$estado" != "Healthy" ]] && [[ "$sync" != "Synced" ]]; then
-            echo "Error: La aplicación no está saludable o sincronizada"
+          app_name=""
+          if [[ "${GITHUB_REF}" == "refs/heads/test" ]]; then
+            app_name="microservices-test"
+          elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            app_name="microservices-prod"
+          fi
+
+          estado=$(argocd app get $app_name -o json | jq -r '.status.health.status')
+          sync=$(argocd app get $app_name -o json | jq -r '.status.sync.status')
+
+          if [[ "$estado" != "Healthy" || "$sync" != "Synced" ]]; then
+            echo "❌ Error: La aplicación $app_name no está saludable o sincronizada"
             exit 1
           fi
 
-      - name: Sincronizar con ArgoCD
+      - name: Desplegar según la rama
         run: |
-          if [[ "${{ github.ref }}" == "refs/heads/test" ]]; then
+          if [[ "${GITHUB_REF}" == "refs/heads/test" ]]; then
             argocd app sync microservices-test
             argocd app wait microservices-test --timeout 300
-          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
             argocd app sync microservices-prod
             argocd app wait microservices-prod --timeout 300
           fi
