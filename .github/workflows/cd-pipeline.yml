@@ -92,7 +92,8 @@ jobs:
 
       - name: Install kubeval
         run: |
-          pip install kubeval || sudo apt-get install -y kubeval
+          curl -sSL https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz | tar xz
+          sudo mv kubeval /usr/local/bin/
 
       - name: Validate YAML manifests
         run: find k8s/ -name "*.yaml" -exec kubeval {} + || echo "Advertencias detectadas en YAMLs"
