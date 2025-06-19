@@ -121,16 +121,16 @@ jobs:
       #       exit 1
       #     fi
 
-      - name: Desplegar según la rama
-        run: |
-          if [[ "${GITHUB_REF}" == "refs/heads/test" ]]; then
-            app_name="microservices-test"
-          elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
-            app_name="microservices-prod"
-          fi
+      # - name: Desplegar según la rama
+      #   run: |
+      #     if [[ "${GITHUB_REF}" == "refs/heads/test" ]]; then
+      #       app_name="microservices-test"
+      #     elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+      #       app_name="microservices-prod"
+      #     fi
 
-          argocd app sync $app_name
-          argocd app wait $app_name --timeout 300
+      #     argocd app sync $app_name
+      #     argocd app wait $app_name --timeout 300
 
       - name: Enviar notificación por WhatsApp
         run: |
