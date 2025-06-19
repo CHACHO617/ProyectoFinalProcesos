@@ -100,7 +100,7 @@ jobs:
           pip install kubeval || sudo apt-get install -y kubeval
 
       - name: Validate YAML manifests
-        run: kubeval manifests/*.yaml || echo "Advertencias detectadas en YAMLs"
+        run: find k8s/ -name "*.yaml" -exec kubeval {} + || echo "Advertencias detectadas en YAMLs"
 
       - name: Login to ArgoCD
         run: |
