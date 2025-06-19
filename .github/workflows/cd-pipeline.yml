@@ -20,14 +20,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Build service1
-        run: docker build -t service1 ./service1
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
 
-      - name: Build service2
-        run: docker build -t service2 ./service2
+      - name: Build & Scan service1
+        run: |
+          docker build -t service1 ./service1
+          trivy image service1
 
-      - name: Build service3
-        run: docker build -t service3 ./service3
+      - name: Build & Scan service2
+        run: |
+          docker build -t service2 ./service2
+          trivy image service2
+
+      - name: Build & Scan service3
+        run: |
+          docker build -t service3 ./service3
+          trivy image service3
 
   test:
     runs-on: ubuntu-latest
@@ -61,21 +71,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Trivy Scan - service1
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: "service1"
-
-      - name: Trivy Scan - service2
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: "service2"
-
-      - name: Trivy Scan - service3
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: "service3"
-
       - name: SonarQube Scan
         uses: SonarSource/sonarcloud-github-action@master
         with:
@@ -108,11 +103,13 @@ jobs:
 
       - name: Validar políticas de despliegue
         run: |
-          app_name=""
           if [[ "${GITHUB_REF}" == "refs/heads/test" ]]; then
             app_name="microservices-test"
           elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
             app_name="microservices-prod"
+          else
+            echo "Rama no soportada"
+            exit 1
           fi
 
           estado=$(argocd app get $app_name -o json | jq -r '.status.health.status')
@@ -126,12 +123,13 @@ jobs:
       - name: Desplegar según la rama
         run: |
           if [[ "${GITHUB_REF}" == "refs/heads/test" ]]; then
-            argocd app sync microservices-test
-            argocd app wait microservices-test --timeout 300
+            app_name="microservices-test"
           elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
-            argocd app sync microservices-prod
-            argocd app wait microservices-prod --timeout 300
+            app_name="microservices-prod"
           fi
+
+          argocd app sync $app_name
+          argocd app wait $app_name --timeout 300
 
       - name: Enviar notificación por WhatsApp
         run: |
