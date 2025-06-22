@@ -131,6 +131,7 @@ jobs:
 
       #     argocd app sync $app_name
       #     argocd app wait $app_name --timeout 300
+      #
 
       - name: Enviar notificación por WhatsApp
         run: |
