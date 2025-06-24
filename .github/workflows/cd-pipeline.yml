@@ -100,7 +100,12 @@ jobs:
 
       - name: Login to ArgoCD
         run: |
-          argocd login $ARGOCD_SERVER --username $ARGOCD_USERNAME --password $ARGOCD_PASSWORD --insecure
+          argocd login localhost:8080 \ --username admin \
+          --password V9WseQDEtlR4TJCh \ --insecure
+
+      # - name: Login to ArgoCD
+      #   run: |
+      #     argocd login $ARGOCD_SERVER --username $ARGOCD_USERNAME --password $ARGOCD_PASSWORD --insecure
 
       # - name: Validar políticas de despliegue
       #   run: |
