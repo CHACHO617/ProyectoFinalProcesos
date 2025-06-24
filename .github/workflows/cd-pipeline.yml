@@ -105,9 +105,9 @@ jobs:
       - name: Touch redeploy-timestamp in YAML
         run: |
           if [[ "${GITHUB_REF}" == "refs/heads/test" ]]; then
-            file="k8s/test/prometheus.yaml"
+            file="k8s/test/prometheus_with_namespace.yaml"
           elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
-            file="k8s/prod/prometheus.yaml"
+            file="k8s/prod/prometheus_with_namespace.yaml"
           fi
 
           timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
