@@ -11,7 +11,7 @@ data:
     \ 'service1'\n    metrics_path: /metrics\n    static_configs:\n      - targets:\
     \ ['service1:80']\n"
 ---
-apiVersion: apps/v1
+apiVersion: apps/v2
 kind: Deployment
 metadata:
   name: prometheus
