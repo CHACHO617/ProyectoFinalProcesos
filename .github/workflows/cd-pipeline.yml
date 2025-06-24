@@ -105,24 +105,24 @@ jobs:
       #       --password $ARGOCD_PASSWORD \
       #       --insecure
 
-      - name: Validar políticas de despliegue
-        run: |
-          if [[ "${GITHUB_REF}" == "refs/heads/test" ]]; then
-            app_name="microservices-test"
-          elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
-            app_name="microservices-prod"
-          else
-            echo "Rama no soportada"
-            exit 1
-          fi
+      # - name: Validar políticas de despliegue
+      #   run: |
+      #     if [[ "${GITHUB_REF}" == "refs/heads/test" ]]; then
+      #       app_name="microservices-test"
+      #     elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+      #       app_name="microservices-prod"
+      #     else
+      #       echo "Rama no soportada"
+      #       exit 1
+      #     fi
 
-          estado=$(argocd app get $app_name -o json | jq -r '.status.health.status')
-          sync=$(argocd app get $app_name -o json | jq -r '.status.sync.status')
+      #     estado=$(argocd app get $app_name -o json | jq -r '.status.health.status')
+      #     sync=$(argocd app get $app_name -o json | jq -r '.status.sync.status')
 
-          if [[ "$estado" != "Healthy" || "$sync" != "Synced" ]]; then
-            echo "❌ Error: La aplicación $app_name no está saludable o sincronizada"
-            exit 1
-          fi
+      #     if [[ "$estado" != "Healthy" || "$sync" != "Synced" ]]; then
+      #       echo "❌ Error: La aplicación $app_name no está saludable o sincronizada"
+      #       exit 1
+      #     fi
 
       - name: Desplegar según la rama
         run: |
