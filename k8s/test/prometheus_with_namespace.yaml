@@ -17,7 +17,7 @@ metadata:
   name: prometheus
   namespace: test
   annotations:
-    redeploy-timestamp: "2025-06-24T05:57:53Z"
+    redeploy-timestamp: "2025-06-24T16:16:10Z"
 spec:
   replicas: 4
   selector:
