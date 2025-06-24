@@ -19,7 +19,7 @@ metadata:
   annotations:
     redeploy-timestamp: "2025-06-24T05:57:53Z"
 spec:
-  replicas: 1
+  replicas: 4
   selector:
     matchLabels:
       app: prometheus
