@@ -82,13 +82,15 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: security
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/test'
     steps:
       - uses: actions/checkout@v3
 
       - name: Install ArgoCD CLI
         run: |
-          curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
-          chmod +x /usr/local/bin/argocd
+          curl -sSL -o argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x argocd
+          sudo mv argocd /usr/local/bin/
 
       - name: Install kubeval
         run: |
@@ -98,31 +100,27 @@ jobs:
       - name: Validate YAML manifests
         run: find k8s/ -name "*.yaml" -exec kubeval {} + || echo "Advertencias detectadas en YAMLs"
 
-      # - name: Login to ArgoCD
-      #   run: |
-      #     argocd login $ARGOCD_SERVER \
-      #       --username $ARGOCD_USERNAME \
-      #       --password $ARGOCD_PASSWORD \
-      #       --insecure
+      - name: Login to ArgoCD
+        run: |
+          argocd login $ARGOCD_SERVER \
+            --username $ARGOCD_USERNAME \
+            --password $ARGOCD_PASSWORD \
+            --insecure
 
-      # - name: Validar políticas de despliegue
-      #   run: |
-      #     if [[ "${GITHUB_REF}" == "refs/heads/test" ]]; then
-      #       app_name="microservices-test"
-      #     elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
-      #       app_name="microservices-prod"
-      #     else
-      #       echo "Rama no soportada"
-      #       exit 1
-      #     fi
+      - name: Desplegar según la rama
+        run: |
+          if [[ "${GITHUB_REF}" == "refs/heads/test" ]]; then
+            app_name="test-env"
+          elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            app_name="prod-env"
+          else
+            echo "❌ Rama no soportada: ${GITHUB_REF}"
+            exit 1
+          fi
 
-      #     estado=$(argocd app get $app_name -o json | jq -r '.status.health.status')
-      #     sync=$(argocd app get $app_name -o json | jq -r '.status.sync.status')
-
-      #     if [[ "$estado" != "Healthy" || "$sync" != "Synced" ]]; then
-      #       echo "❌ Error: La aplicación $app_name no está saludable o sincronizada"
-      #       exit 1
-      #     fi
+          echo "🔄 Sincronizando $app_name..."
+          argocd app sync $app_name
+          argocd app wait $app_name --timeout 300
 
       - name: Enviar notificación por WhatsApp
         run: |
