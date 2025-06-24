@@ -21,7 +21,7 @@ metadata:
     redeploy-timestamp: "2025-06-24T14:51:08Z"
   namespace: test
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: prometheus
