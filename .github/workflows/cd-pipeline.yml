@@ -110,7 +110,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          token: ${{ secrets.GH_PAT }}
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
       - name: Touch redeploy.txt to trigger ArgoCD sync
         run: |
@@ -123,8 +123,8 @@ jobs:
             folder="k8s/prod"
           fi
 
-          echo "trigger: $(date)" > $folder/redeploy.txt
+          echo "trigger: $(date)" > "$folder/redeploy.txt"
 
-          git add $folder/redeploy.txt
+          git add "$folder/redeploy.txt"
           git commit -m "🔁 Trigger ArgoCD sync for $folder"
           git push https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/CHACHO617/ProyectoFinalProcesos.git HEAD:${GITHUB_REF#refs/heads/}
