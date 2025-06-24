@@ -16,6 +16,8 @@ kind: Deployment
 metadata:
   name: prometheus
   namespace: prod
+  annotations:
+    redeploy-timestamp: "2025-06-24T03:00:00Z" # ← Add here
 spec:
   replicas: 1
   selector:
