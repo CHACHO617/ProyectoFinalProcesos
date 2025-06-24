@@ -101,3 +101,27 @@ jobs:
             --data-urlencode "From=${{ env.TWILIO_FROM }}" \
             --data-urlencode "To=${{ env.TWILIO_TO }}" \
             -u ${{ secrets.TWILIO_SID }}:${{ secrets.TWILIO_AUTH_TOKEN }}
+
+      - name: Touch redeploy-timestamp in YAML
+        run: |
+          if [[ "${GITHUB_REF}" == "refs/heads/test" ]]; then
+            file="k8s/test/prometheus.yaml"
+          elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            file="k8s/prod/prometheus.yaml"
+          fi
+
+          timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "🔁 Updating redeploy-timestamp to $timestamp"
+
+          # Replace the annotation or add it if it doesn't exist
+          if grep -q "redeploy-timestamp" "$file"; then
+            sed -i "s/redeploy-timestamp: .*/redeploy-timestamp: \"$timestamp\"/" "$file"
+          else
+            sed -i "/^  name: prometheus/a \ \ annotations:\n\ \ \ \ redeploy-timestamp: \"$timestamp\"" "$file"
+          fi
+
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add "$file"
+          git commit -m "🔁 Trigger ArgoCD sync via annotation"
+          git push https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/CHACHO617/ProyectoFinalProcesos.git HEAD:${GITHUB_REF#refs/heads/}
