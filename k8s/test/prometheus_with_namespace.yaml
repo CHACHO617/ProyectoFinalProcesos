@@ -2,8 +2,6 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: prometheus-config
-  annotations:
-    redeploy-timestamp: "2025-06-24T14:57:10Z"
   namespace: test
   labels:
     name: prometheus-config
@@ -17,11 +15,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: prometheus
-  annotations:
-    redeploy-timestamp: "2025-06-24T14:57:10Z"
   namespace: test
+  annotations:
+    redeploy-timestamp: "2025-06-24T05:57:53Z"
 spec:
-  replicas: 3
+  replicas: 4
   selector:
     matchLabels:
       app: prometheus
@@ -48,9 +46,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: prometheus
-  annotations:
-    redeploy-timestamp: "2025-06-24T14:57:10Z"
+  name: prometheus-test
   namespace: test
 spec:
   type: NodePort
@@ -58,4 +54,4 @@ spec:
     app: prometheus
   ports:
     - port: 9090
-      nodePort: 32001
+      nodePort: 32003
