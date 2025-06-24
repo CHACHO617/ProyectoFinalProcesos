@@ -53,3 +53,5 @@ spec:
   ports:
     - port: 9090
       nodePort: 32001
+
+      ## This is the port that will be exposed on the node
