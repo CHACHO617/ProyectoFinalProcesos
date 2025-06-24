@@ -17,7 +17,7 @@ metadata:
   name: prometheus
   namespace: prod
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: prometheus
@@ -53,5 +53,3 @@ spec:
   ports:
     - port: 9090
       nodePort: 32001
-
-      ## This is the port that will be exposed on the NODE
