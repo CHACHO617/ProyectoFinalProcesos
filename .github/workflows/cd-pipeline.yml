@@ -127,4 +127,4 @@ jobs:
 
           git add $folder/redeploy.txt
           git commit -m "🔁 Trigger ArgoCD sync for $folder"
-          git push
+          git push https://x-access-token:${{ secrets.GH_PAT}}@github.com/CHACHO617/ProyectoFinalProcesos.git HEAD:${GITHUB_REF#refs/heads/}
