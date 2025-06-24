@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: prometheus-config
   annotations:
-    redeploy-timestamp: "2025-06-24T14:23:08Z"
+    redeploy-timestamp: "2025-06-24T14:31:26Z"
   namespace: test
   labels:
     name: prometheus-config
@@ -18,7 +18,7 @@ kind: Deployment
 metadata:
   name: prometheus
   annotations:
-    redeploy-timestamp: "2025-06-24T14:23:08Z"
+    redeploy-timestamp: "2025-06-24T14:31:26Z"
   namespace: test
 spec:
   replicas: 1
@@ -50,7 +50,7 @@ kind: Service
 metadata:
   name: prometheus
   annotations:
-    redeploy-timestamp: "2025-06-24T14:23:08Z"
+    redeploy-timestamp: "2025-06-24T14:31:26Z"
   namespace: test
 spec:
   type: NodePort
