@@ -100,28 +100,6 @@ jobs:
       - name: Validate YAML manifests
         run: find k8s/ -name "*.yaml" -exec kubeval {} + || echo "Advertencias detectadas en YAMLs"
 
-      - name: Login to ArgoCD
-        run: |
-          argocd login $ARGOCD_SERVER \
-            --username $ARGOCD_USERNAME \
-            --password $ARGOCD_PASSWORD \
-            --insecure
-
-      - name: Desplegar según la rama
-        run: |
-          if [[ "${GITHUB_REF}" == "refs/heads/test" ]]; then
-            app_name="test-env"
-          elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
-            app_name="prod-env"
-          else
-            echo "❌ Rama no soportada: ${GITHUB_REF}"
-            exit 1
-          fi
-
-          echo "🔄 Sincronizando $app_name..."
-          argocd app sync $app_name
-          argocd app wait $app_name --timeout 300
-
       - name: Enviar notificación por WhatsApp
         run: |
           curl -X POST https://api.twilio.com/2010-04-01/Accounts/${{ secrets.TWILIO_SID }}/Messages.json \
