@@ -8,31 +8,36 @@ on:
 
 env:
   TWILIO_FROM: "whatsapp:+14155238886"
-  TWILIO_TO: "whatsapp:+593TU_NUMERO_AQUI"
-  ARGOCD_SERVER: "localhost:8080"
+  TWILIO_TO: "whatsapp:+593997357707"
+  ARGOCD_SERVER: "127.0.0.1:3115"
   ARGOCD_USERNAME: "admin"
-  ARGOCD_PASSWORD: "admin"
+  ARGOCD_PASSWORD: "V9WseQDEtlR4TJCh"
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Install Docker
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y docker.io
-
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Build service1
-        run: docker build -t service1 ./service1
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
 
-      - name: Build service2
-        run: docker build -t service2 ./service2
+      - name: Build & Scan service1
+        run: |
+          docker build -t service1 ./service1
+          trivy image service1
 
-      - name: Build service3
-        run: docker build -t service3 ./service3
+      - name: Build & Scan service2
+        run: |
+          docker build -t service2 ./service2
+          trivy image service2
+
+      - name: Build & Scan service3
+        run: |
+          docker build -t service3 ./service3
+          trivy image service3
 
   test:
     runs-on: ubuntu-latest
@@ -66,70 +71,28 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Trivy Scan - service1
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: "service1"
-
-      - name: Trivy Scan - service2
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: "service2"
-
-      - name: Trivy Scan - service3
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: "service3"
-
       - name: SonarQube Scan
         uses: SonarSource/sonarcloud-github-action@master
         with:
           args: >
-            -Dsonar.projectKey=your_project_key
-            -Dsonar.organization=your_org
+            -Dsonar.projectKey=CHACHO617_ProyectoFinalProcesos
+            -Dsonar.organization=chacho617
             -Dsonar.login=${{ secrets.SONAR_TOKEN }}
 
   deploy:
     runs-on: ubuntu-latest
     needs: security
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/test'
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install ArgoCD CLI
-        run: |
-          curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
-          chmod +x /usr/local/bin/argocd
-
       - name: Install kubeval
         run: |
-          pip install kubeval || sudo apt-get install kubeval
+          curl -sSL https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz | tar xz
+          sudo mv kubeval /usr/local/bin/
 
       - name: Validate YAML manifests
-        run: kubeval manifests/*.yaml || echo "Advertencias detectadas en YAMLs"
-
-      - name: Login to ArgoCD
-        run: |
-          argocd login $ARGOCD_SERVER --username $ARGOCD_USERNAME --password $ARGOCD_PASSWORD --insecure
-
-      - name: Validar políticas de despliegue
-        run: |
-          argocd app get microservices-app
-          estado=$(argocd app get microservices-app -o json | jq -r '.status.health.status')
-          sync=$(argocd app get microservices-app -o json | jq -r '.status.sync.status')
-          if [[ "$estado" != "Healthy" ]] && [[ "$sync" != "Synced" ]]; then
-            echo "Error: La aplicación no está saludable o sincronizada"
-            exit 1
-          fi
-
-      - name: Sincronizar con ArgoCD
-        run: |
-          if [[ "${{ github.ref }}" == "refs/heads/test" ]]; then
-            argocd app sync microservices-test
-            argocd app wait microservices-test --timeout 300
-          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            argocd app sync microservices-prod
-            argocd app wait microservices-prod --timeout 300
-          fi
+        run: find k8s/ -name "*.yaml" -exec kubeval {} + || echo "Advertencias detectadas en YAMLs"
 
       - name: Enviar notificación por WhatsApp
         run: |
@@ -138,3 +101,27 @@ jobs:
             --data-urlencode "From=${{ env.TWILIO_FROM }}" \
             --data-urlencode "To=${{ env.TWILIO_TO }}" \
             -u ${{ secrets.TWILIO_SID }}:${{ secrets.TWILIO_AUTH_TOKEN }}
+
+      - name: Touch redeploy-timestamp in YAML
+        run: |
+          if [[ "${GITHUB_REF}" == "refs/heads/test" ]]; then
+            file="k8s/test/prometheus_with_namespace.yaml"
+          elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            file="k8s/prod/prometheus_with_namespace.yaml"
+          fi
+
+          timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "🔁 Updating redeploy-timestamp to $timestamp"
+
+          # Replace the annotation or add it if it doesn't exist
+          if grep -q "redeploy-timestamp" "$file"; then
+            sed -i "s/redeploy-timestamp: .*/redeploy-timestamp: \"$timestamp\"/" "$file"
+          else
+            sed -i "/^  name: prometheus/a \ \ annotations:\n\ \ \ \ redeploy-timestamp: \"$timestamp\"" "$file"
+          fi
+
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add "$file"
+          git commit -m "🔁 Trigger ArgoCD sync via annotation"
+          git push https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/CHACHO617/ProyectoFinalProcesos.git HEAD:${GITHUB_REF#refs/heads/}
